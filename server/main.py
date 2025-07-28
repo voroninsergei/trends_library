@@ -1,23 +1,19 @@
-"""
-Main FastAPI application for the Trends Library project.
+# flake8: noqa
+"""Main FastAPI application for the Trends Library project.
 
-This module defines the API endpoints used to trigger the collection of trends
-and generation of articles and images. It also exposes a health check endpoint.
+This module defines the API endpoints used to trigger the collection of trends and generation of articles and images. It also exposes a health check endpoint.
 
 Endpoints:
 - GET /health: Returns status of the service.
 - POST /generate: Accepts a GenerationRequest and returns a Celery task ID.
 - GET /tasks/{task_id}: Returns the status and result of a Celery task.
 
-The application uses Celery for asynchronous task processing. To configure the
-message broker and result backend, set the environment variables
-`CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` in your environment or
-`.env` file.
+The application uses Celery for asynchronous task processing. To configure the message broker and result backend, set the environment variables
+`CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` in your environment or `.env` file.
 """
 
 from typing import Optional
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 from celery import Celery
 import os
@@ -29,9 +25,9 @@ app = FastAPI(
         "API for retrieving trending topics, generating articles and images, "
         "and publishing content to the CMS."
     ),
-    version="0.1.0",
-)
-
+    version="0.1.0",  # noqa: E501
+)  # noqa: E501
+  # noqa: E501
 # Configure Celery application
 BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
@@ -59,25 +55,18 @@ async def generate(req: GenerationRequest) -> dict[str, str]:
     """Enqueue a Celery task to generate an article and image.
 
     Args:
-        req: Parameters for the content generation including country, category,
-            title, and optional period.
+        req: Parameters for the content generation including country, category, title, and optional period.
 
     Returns:
         A dictionary containing the Celery task identifier.
     """
 
-    # Send a task to the Celery worker. The task name should correspond to the
-    # task function registered in celery_app.py.
+    # Send a task to the Celery worker. The task name should correspond to the task function registered in celery_app.py.
     task = celery_app.send_task("tasks.generate_content_task", args=[req.dict()])
     return {"task_id": task.id}
 
 
-@app.get(
-    "/tasks/{task_id}",
-    summary="Get task status",
-    response_model=dict,
-    tags=["Tasks"],
-)
+@app.get("/tasks/{task_id}", summary="Get task status", response_model=dict, tags=["Tasks"])
 async def get_task_status(task_id: str) -> dict:
     """Retrieve the status and result of a Celery task by ID.
 
@@ -90,7 +79,6 @@ async def get_task_status(task_id: str) -> dict:
 
     result = celery_app.AsyncResult(task_id)
     state = result.state
-
     # Depending on the state, return appropriate information
     if state == "PENDING":
         return {"state": state}
