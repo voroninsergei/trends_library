@@ -7,6 +7,8 @@ from typing import Dict, Any
 
 import openai
 
+
+
 # Initialize the OpenAI API key from environment variables. Requires OPENAI_API_KEY to be set.
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -22,7 +24,7 @@ def generate_image(prompt: str, size: str = "1024x1024") -> Dict[str, Any]:
     Returns:
         A dictionary containing the URL of the generated image and an alt-text.
     """
-    response = openai.Image.create(
+    response = openai.Image.create(  # noqa: E501
         prompt=prompt,
         n=1,
         size=size,
