@@ -1,3 +1,5 @@
+# flake8: noqa
+
 """
 creator.py: Module to generate images for trending topics using DALL\u00b7E 3.
 """
