@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 Celery application and task definitions for the Trends Library project.
 
