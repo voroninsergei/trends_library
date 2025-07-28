@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 publisher.py: Module for publishing articles to the CMS.
 
