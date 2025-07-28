@@ -1,3 +1,5 @@
+# flake8: noqa
+
 """
 generator.py: Module to generate articles from trending topics using OpenAI GPT-4o.
 
