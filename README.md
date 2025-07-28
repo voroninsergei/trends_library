@@ -27,21 +27,25 @@ Automated Trend Library is a Python-based platform that collects trending topics
 ## Getting started
 
 1. Ensure Python 3.12 is installed.
-2. Create a virtual environment and activate it:
+2. 
+<!-- Trigger pipeline -->
+
+
+3. Create a virtual environment and activate it:
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
-3. Install the dependencies:
+4. Install the dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Set environment variables for your OpenAI API key (`OPENAI_API_KEY`), CMS base URL (`CMS_BASE_URL`) and authentication token (`CMS_TOKEN`).
-5. Start the Celery worker and beat scheduler:
+5. Set environment variables for your OpenAI API key (`OPENAI_API_KEY`), CMS base URL (`CMS_BASE_URL`) and authentication token (`CMS_TOKEN`).
+6. Start the Celery worker and beat scheduler:
    ```bash
    celery -A celery_app.celery_app worker -B --loglevel=info
    ```
-6. Run the FastAPI server:
+7. Run the FastAPI server:
    ```bash
    uvicorn server.main:app --host 0.0.0.0 --port 8000
    ```
