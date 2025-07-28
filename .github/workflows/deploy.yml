@@ -1,0 +1,34 @@
+# Deployment workflow for the Trends Library project
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: Prepare kubeconfig
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: |
+          # Decode the base64-encoded kubeconfig secret and write to file
+          echo "$KUBE_CONFIG_DATA" | base64 -d > kubeconfig
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install trends-library ./helm \
+            --namespace default \
+            --set image.repository=${{ secrets.DOCKERHUB_USERNAME }}/trends-library \
+            --set image.tag=${{ github.sha }} \
+            --kubeconfig kubeconfig
