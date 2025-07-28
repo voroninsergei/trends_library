@@ -36,7 +36,7 @@ def generate_article(topic: str, language: str = "en") -> Dict[str, Any]:
     response = openai.ChatCompletion.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that writes comprehensive articles based on given topics."},
+            {"role": "system", "content": "You are a helpful assistant that writes comprehensive articles based on given topics."},  # noqa: E501
             {"role": "user", "content": prompt},
         ],
         temperature=0.7,
