@@ -1,3 +1,5 @@
+# flake8: noqa
+
 """
 article_generator package.
 
