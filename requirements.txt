@@ -1,0 +1,4 @@
+pytrends
+openai
+requests
+python-dotenv
