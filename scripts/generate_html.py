@@ -9,7 +9,7 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 def fetch_trending_search():
     pytrends = TrendReq(hl="en-US", tz=360)
     df = pytrends.trending_searches(pn="united_states")
-    return df[0]  # берём самый популярный запрос
+    return df[0]
 
 def generate_article(prompt):
     openai.api_key = OPENAI_API_KEY
@@ -21,9 +21,9 @@ def generate_article(prompt):
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response.choices[0].message.content.strip()
 
-def create_html(title, body, slug, date):
-    # Простая HTML‑разметка
-    html = f"""<!DOCTYPE html>
+def create_html(title, body, date, filename):
+    body_html = body.replace('\n', '<br>')
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -33,43 +33,39 @@ def create_html(title, body, slug, date):
 <body>
     <h1>{title}</h1>
     <p><em>{date}</em></p>
-    {body.replace('\n', '<br>')}
+    {body_html}
 </body>
-</html>"""
-    return html
+</html>
+"""
 
 def main():
     trend = fetch_trending_search()
     article = generate_article(trend)
-    title = article.split("\n")[0]
+    title = article.split("\\n")[0]
     slug = title.lower().replace(" ", "-").replace(",", "")[:50]
     today = datetime.datetime.utcnow().date().isoformat()
-    content_html = create_html(title, article, slug, today)
 
-    # пути для GitHub Pages
+    html_content = create_html(title, article, today, slug)
     articles_dir = os.path.join("docs", "articles")
     os.makedirs(articles_dir, exist_ok=True)
     article_filename = f"{today}-{slug}.html"
     with open(os.path.join(articles_dir, article_filename), "w", encoding="utf-8") as f:
-        f.write(content_html)
+        f.write(html_content)
 
-    # обновление index.html
     index_path = os.path.join("docs", "index.html")
-    link = f'<li><a href="articles/{article_filename}">{title} ({today})</a></li>\n'
+    link = f'<li><a href="articles/{article_filename}">{title} ({today})</a></li>\\n'
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
-            index = f.readlines()
+            lines = f.readlines()
     else:
-        index = ["<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"><title>Latest News</title></head><body>\n",
-                 "<h1>Latest News</h1>\n<ul>\n"]
-
-    # вставляем ссылку в начало списка
-    insert_pos = index.index("<ul>\n") + 1 if "<ul>\n" in index else len(index)
-    index.insert(insert_pos, link)
-    if index[-1].strip() != "</ul></body></html>":
-        index.append("</ul></body></html>\n")
+        lines = ["<!DOCTYPE html>\\n<html><head><meta charset=\\"UTF-8\\"><title>Latest News</title></head><body>\\n",
+                 "<h1>Latest News</h1>\\n<ul>\\n"]
+    insert_pos = lines.index("<ul>\\n") + 1 if "<ul>\\n" in lines else len(lines)
+    lines.insert(insert_pos, link)
+    if not any("</ul>" in line for line in lines):
+        lines.append("</ul></body></html>\\n")
     with open(index_path, "w", encoding="utf-8") as f:
-        f.writelines(index)
+        f.writelines(lines)
 
 if __name__ == "__main__":
     main()
