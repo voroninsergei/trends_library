@@ -9,17 +9,20 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 def fetch_trending_search() -> str:
     """Fetch the top trending search term from Google Trends (United States)."""
-    pytrends = TrendReq(hl="en-US", tz=360)
-    df = pytrends.trending_searches(pn="united_states")
-    return df[0]
+       try:
+        pytrends = TrendReq(hl="en-US", tz=360)
+        df = pytrends.trending_searches(pn="united_states")
+        return df[0]
+    except Exception:
+           return "World news"
+
 
 def generate_article(prompt: str) -> str:
     """Generate a 4–5 paragraph news article about the given prompt using OpenAI."""
     openai.api_key = OPENAI_API_KEY
     messages = [
         {"role": "system", "content": "You are a journalist who writes concise news articles."},
-        {"role": "user", "content": f"Write a 4-5-paragraph news article about '{prompt}'. "
-                                    "Include a headline and subheadings. Keep it factual and neutral."},
+        {"role": "user", "content": f"Write a 4-5-paragraph news article about '{prompt}'. Include a headline and subheadings. Keep it factual and neutral."},
     ]
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response.choices[0].message.content.strip()
@@ -49,7 +52,6 @@ def main():
     slug = title.lower().replace(" ", "-").replace(",", "")[:50]
     today = datetime.datetime.utcnow().date().isoformat()
 
-    # Write article file
     articles_dir = os.path.join("docs", "articles")
     os.makedirs(articles_dir, exist_ok=True)
     article_filename = f"{today}-{slug}.html"
@@ -57,24 +59,20 @@ def main():
     with open(os.path.join(articles_dir, article_filename), "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    # Update index.html
     index_path = os.path.join("docs", "index.html")
-    link = f'<li><a href="articles/{article_filename}">{title} ({today})</a></li>\\n'
+    link = f'<li><a href="articles/{article_filename}">{title} ({today})</a></li>\n'
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
     else:
-        # Create a basic index page if it doesn't exist
         lines = [
-            "<!DOCTYPE html>\\n<html><head><meta charset=\"UTF-8\"><title>Latest News</title></head><body>\\n",
-            "<h1>Latest News</h1>\\n<ul>\\n",
+            "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"><title>Latest News</title></head><body>\n",
+            "<h1>Latest News</h1>\n<ul>\n",
         ]
-    # Insert the link right after the <ul> tag (or append to end)
-    insert_pos = lines.index("<ul>\\n") + 1 if "<ul>\\n" in lines else len(lines)
+    insert_pos = lines.index("<ul>\n") + 1 if "<ul>\n" in lines else len(lines)
     lines.insert(insert_pos, link)
-    # Ensure closing tags exist
     if not any("</ul>" in line for line in lines):
-        lines.append("</ul></body></html>\\n")
+        lines.append("</ul></body></html>\n")
     with open(index_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
