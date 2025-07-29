@@ -9,13 +9,13 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 def fetch_trending_search() -> str:
     """Fetch the top trending search term from Google Trends (United States)."""
-       try:
+    try:
         pytrends = TrendReq(hl="en-US", tz=360)
         df = pytrends.trending_searches(pn="united_states")
         return df[0]
     except Exception:
-           return "World news"
-
+        # Google Trends sometimes returns 404; fall back to a generic term
+        return "World news"
 
 def generate_article(prompt: str) -> str:
     """Generate a 4–5 paragraph news article about the given prompt using OpenAI."""
