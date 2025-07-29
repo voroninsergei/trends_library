@@ -1,11 +1,4 @@
-fastapi
-uvicorn[standard]
-celery
-redis
-psycopg2-binary
-boto3
 pytrends
 openai
 requests
-pydantic
 python-dotenv
