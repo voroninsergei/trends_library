@@ -14,7 +14,7 @@ def fetch_trending_search() -> str:
         df = pytrends.trending_searches(pn="united_states")
         return df[0]
     except Exception:
-        # Google Trends sometimes returns 404; fall back to a generic term
+        # Fall back to a generic topic if Google Trends fails
         return "World news"
 
 def generate_article(prompt: str) -> str:
@@ -77,4 +77,4 @@ def main():
         f.writelines(lines)
 
 if __name__ == "__main__":
-    main() 
+    main()
