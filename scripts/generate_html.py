@@ -134,7 +134,7 @@ def main() -> None:
     html_content = create_html(title, article_text, today)
     article_path = os.path.join(articles_dir, article_filename)
     with open(article_path, "w", encoding="utf-8") as fh:
-        fh.write(html_content)
+        fh.w
 
     # Build or update the index.html page.
     index_path = os.path.join("docs", "index.html")
