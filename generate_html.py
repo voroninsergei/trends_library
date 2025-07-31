@@ -1,39 +1,45 @@
 #!/usr/bin/env python3
+"""
+Script to fetch a trending topic from Google Trends and generate a news
+article using OpenAI. The result is saved as an HTML file in the
+`docs/articles` directory and the main `docs/index.html` is updated to
+link to the new article. If the OpenAI API key is missing or the API
+call fails, a fallback article is generated so that the GitHub Action
+still succeeds.
+"""
+
 import os
 import datetime
+from typing import List
+
 import openai
 from pytrends.request import TrendReq
 
-# Retrieve API key from environment
-#
-# Use os.getenv instead of indexing into os.environ directly. This avoids a
-# KeyError at import time if OPENAI_API_KEY is not set. We validate the key in
-# main() and provide a clear error message if it is missing.
+# Retrieve API key from environment. We defer validation until runtime to
+# avoid raising exceptions on import if the key is missing.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-def fetch_trending_search() -> str:
-    """Fetch the top trending search term from Google Trends (United States).
 
-    The pytrends library returns a pandas.DataFrame with the trending terms in
-    column 0. The previous implementation returned the entire column as a
-    Series, which is not what callers expect. Here we select the first row of
-    the first column to get a single string. If pytrends fails for any reason,
-    we fall back to a generic topic.
+def fetch_trending_search() -> str:
+    """Return the top trending search term for the United States.
+
+    If the Google Trends request fails for any reason, return a generic
+    fallback topic instead of propagating the exception. This ensures
+    downstream logic always has a string to work with.
     """
     try:
         pytrends = TrendReq(hl="en-US", tz=360)
         df = pytrends.trending_searches(pn="united_states")
-        # Use iat to access the first cell as a plain Python string.
         return df.iat[0, 0]
     except Exception:
-        # Fall back to a generic topic if Google Trends fails
         return "World news"
 
-def generate_article(prompt: str) -> str:
-    """Generate a 4–5 paragraph news article about the given prompt using OpenAI.
 
-    The API key is set just before making the request. If the API call fails,
-    the exception will propagate so that the caller can handle it appropriately.
+def generate_article(prompt: str) -> str:
+    """Generate a 4–5 paragraph news article about ``prompt`` using OpenAI.
+
+    The API key is set just before making the request. If any error
+    occurs during the API call, let the caller handle the exception.
     """
     openai.api_key = OPENAI_API_KEY
     messages = [
@@ -56,86 +62,107 @@ def generate_article(prompt: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
+
 def create_html(title: str, body: str, date: str) -> str:
-    """Return an HTML document for the article."""
-    body_html = body.replace('\n', '<br>')
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{title}</title>
-    <meta name="description" content="{title}">
-</head>
-<body>
-    <h1>{title}</h1>
-    <p><em>{date}</em></p>
-    {body_html}
-</body>
-</html>
-"""
+    """Return an HTML document for the article.
 
-def main() -> None:
-    """Entry point for the script.
-
-    Orchestrates fetching a trending topic, generating an article, writing the
-    resulting HTML file, and updating the index page. Validates required
-    configuration and raises a clear error when the OPENAI_API_KEY is missing.
+    This function replaces newline characters in the body with ``<br>``
+    tags so that paragraphs are separated when rendered in the browser.
     """
-    if not OPENAI_API_KEY:
-        raise RuntimeError(
-            "The OPENAI_API_KEY environment variable is not set. "
-            "Please export it before running this script."
-        )
+    body_html = body.replace("\n", "<br>")
+    return (
+        "<!DOCTYPE html>\n"
+        "<html lang=\"en\">\n"
+        "<head>\n"
+        "  <meta charset=\"UTF-8\">\n"
+        f"  <title>{title}</title>\n"
+        f"  <meta name=\"description\" content=\"{title}\">\n"
+        "</head>\n"
+        "<body>\n"
+        f"  <h1>{title}</h1>\n"
+        f"  <p><em>{date}</em></p>\n"
+        f"  {body_html}\n"
+        "</body>\n"
+        "</html>\n"
+    )
 
-    # Determine the topic and generate the article text.
-    trend = fetch_trending_search()
-    article_text = generate_article(trend)
 
-    # Extract the headline (first non-empty line) for the title and slug.
-    lines = [ln for ln in article_text.split("\n") if ln.strip()]
-    title = lines[0] if lines else trend.title()
+def update_index(index_path: str, title: str, slug_filename: str, date: str) -> None:
+    """Create or update the ``index.html`` file with a link to the new article.
 
-    # Normalise the slug: lowercase, replace spaces with hyphens and remove punctuation.
-    raw_slug = title.lower()
-    for ch in [" ", ",", ".", ":", "?", "!", ";", "\n"]:
-        raw_slug = raw_slug.replace(ch, "-")
-    slug = "".join(c for c in raw_slug if c.isalnum() or c == "-")
-    slug = slug.strip("-")[:50]
-
-    today = datetime.datetime.utcnow().date().isoformat()
-
-    # Write the article HTML to docs/articles.
-    articles_dir = os.path.join("docs", "articles")
-    os.makedirs(articles_dir, exist_ok=True)
-    article_filename = f"{today}-{slug}.html"
-    html_content = create_html(title, article_text, today)
-    article_path = os.path.join(articles_dir, article_filename)
-    with open(article_path, "w", encoding="utf-8") as fh:
-        fh.write(html_content)
-
-    # Build or update the index.html page.
-    index_path = os.path.join("docs", "index.html")
-    link = f'<li><a href="articles/{article_filename}">{title} ({today})</a></li>\n'
+    The link is inserted before the closing ``</ul>`` tag. If the ``index.html``
+    does not exist, a minimal page with a list is created.
+    """
+    link = f'<li><a href="articles/{slug_filename}">{title} ({date})</a></li>\n'
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as fh:
             index_content = fh.read()
     else:
         index_content = (
             "<!DOCTYPE html>\n"
-            "<html><head><meta charset=\"UTF-8\"><title>Latest News</title></head><body>\n"
+            "<html lang=\"en\">\n"
+            "<head><meta charset=\"UTF-8\"><title>Latest News</title></head>\n"
+            "<body>\n"
             "<h1>Latest News</h1>\n"
             "<ul>\n</ul>\n"
-            "</body></html>\n"
+            "</body>\n"
+            "</html>\n"
         )
-
-    # Insert the link before the closing </ul> if it's not already present.
     if link not in index_content:
-        if "</ul>" not in index_content:
-            index_content = index_content.replace("</body>", "</ul></body>")
-        index_content = index_content.replace("</ul>", f"{link}</ul>")
-
+        if "</ul>" in index_content:
+            index_content = index_content.replace("</ul>", f"{link}</ul>")
+        else:
+            # If somehow </ul> is missing, append the link near the end of body
+            index_content = index_content.replace("</body>", f"<ul>\n{link}</ul></body>")
     with open(index_path, "w", encoding="utf-8") as fh:
         fh.write(index_content)
+
+
+def main() -> None:
+    """Main entry point for generating and saving the daily news article."""
+    trend = fetch_trending_search()
+
+    # Generate article text using OpenAI if a key is configured.
+    if OPENAI_API_KEY:
+        try:
+            article_text = generate_article(trend)
+        except Exception as exc:
+            article_text = (
+                f"News update for {trend}\n\n"
+                f"An error occurred while generating the article: {exc}.\n"
+                "Please check your API configuration and try again."
+            )
+    else:
+        article_text = (
+            f"News update for {trend}\n\n"
+            "Automatic article generation is disabled because the "
+            "OPENAI_API_KEY environment variable is not set. "
+            "Please add this secret in your repository settings to enable "
+            "AI-generated news."
+        )
+
+    # Determine article title and slug.
+    lines: List[str] = [ln for ln in article_text.split("\n") if ln.strip()]
+    title: str = lines[0] if lines else trend.title()
+    raw_slug = title.lower()
+    for ch in [" ", ",", ".", ":", "?", "!", ";", "\n"]:
+        raw_slug = raw_slug.replace(ch, "-")
+    slug = "".join(c for c in raw_slug if c.isalnum() or c == "-").strip("-")[:50]
+
+    today = datetime.datetime.utcnow().date().isoformat()
+    articles_dir = os.path.join("docs", "articles")
+    os.makedirs(articles_dir, exist_ok=True)
+    article_filename = f"{today}-{slug}.html"
+
+    html_content = create_html(title, article_text, today)
+    article_path = os.path.join(articles_dir, article_filename)
+    with open(article_path, "w", encoding="utf-8") as fh:
+        fh.write(html_content)
+
+    # Update index.html
+    index_path = os.path.join("docs", "index.html")
+    update_index(index_path, title, article_filename, today)
+
 
 if __name__ == "__main__":
     main()
