@@ -1,4 +1,4 @@
 pytrends
-openai
+openai==0.28.0
 requests
 python-dotenv
