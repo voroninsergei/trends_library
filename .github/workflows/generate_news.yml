@@ -1,9 +1,11 @@
 name: Generate daily news
 on:
   schedule:
-    - cron: '0 8 * * *'  # каждый день в 08:00 UTC
+    # запускать каждый день в 08:00 UTC
+    - cron: '0 8 * * *'
   workflow_dispatch:
 
+# даём токену GitHub Actions права на запись в репозиторий для коммита изменений
 permissions:
   contents: write
 
@@ -21,20 +23,23 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # обновляем pip и ставим зависимости из файла requirements.txt
           python -m pip install --upgrade pip
-          pip install pytrends openai requests python-dotenv
+          pip install -r requirements.txt
 
       - name: Run script to generate article
+        # передаём ключ API как переменную окружения
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python scripts/generate_html.py
 
       - name: Commit and push changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs
-          git commit -m "chore: add daily news $(date -u +'%Y-%m-%d')" || echo "No changes to commit"
-          git push
+        # используем встроенный токен для push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com"
+          git add docs/index.html docs/articles/*.html
+          git commit -m "Update news articles [skip ci]" || echo "No changes to commit"
+          git push
